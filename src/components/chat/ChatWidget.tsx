@@ -155,7 +155,6 @@ export function ChatWidget({ conversationId: routeConversationId }: ChatWidgetPr
 
         createdConversationId = createdConversation.data.id
         setPendingConversationId(createdConversationId)
-        navigate(`/conversation/${createdConversationId}`)
       }
 
       if (!createdConversationId) {
@@ -172,6 +171,10 @@ export function ChatWidget({ conversationId: routeConversationId }: ChatWidgetPr
 
         return [...withoutDuplicateResponse, { id: response.data.id, role: response.data.role, content: response.data.content }]
       })
+
+      if (!routeConversationId) {
+        navigate(`/conversation/${createdConversationId}`)
+      }
     } catch (requestError) {
       if (!createdConversationId) {
         setMessages((current) => current.filter((message) => message.id !== optimisticMessage.id))

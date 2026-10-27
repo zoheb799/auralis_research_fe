@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { motion } from 'framer-motion'
-import { ArrowUpRight, BadgeDollarSign, BarChart3, TrendingUp } from 'lucide-react'
+import { ArrowUpRight, BarChart3, TrendingUp } from 'lucide-react'
 import { Link, useParams } from 'react-router-dom'
 
 import { fetchStock, fetchStockAnalysis } from '../api/stocks'
@@ -9,47 +9,65 @@ import { PerformanceChart } from '../components/charts/PerformanceChart'
 import { Badge } from '../components/ui/badge'
 import { Button } from '../components/ui/button'
 import { Card } from '../components/ui/card'
-import type { Stock } from '../types/stock'
+import type { StockDetailResponse } from '../types/stock'
+
+interface StockPageState {
+  stockId: string
+  stock?: StockDetailResponse
+  analysis?: unknown
+  loading: boolean
+  analysisLoading: boolean
+  error: string
+  analysisError: string
+}
 
 export function StockDetailsPage() {
   const { stockId } = useParams()
-  const [stock, setStock] = useState<Stock | null>(null)
-  const [analysis, setAnalysis] = useState<unknown>()
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState('')
-  const [analysisError, setAnalysisError] = useState('')
+  const [pageState, setPageState] = useState<StockPageState>({
+    stockId: '',
+    loading: true,
+    analysisLoading: true,
+    error: '',
+    analysisError: '',
+  })
 
   useEffect(() => {
-    if (!stockId) {
-      setError('A stock ID is required.')
-      setLoading(false)
-      return
-    }
+    if (!stockId) return
 
     let active = true
-    setLoading(true)
-    setError('')
-    setAnalysisError('')
-    setStock(null)
-    setAnalysis(undefined)
+    const updatePageState = (patch: Partial<StockPageState>) => {
+      setPageState((previous) => ({
+        ...(previous.stockId === stockId ? previous : {
+          stockId,
+          loading: true,
+          analysisLoading: true,
+          error: '',
+          analysisError: '',
+        }),
+        ...patch,
+      }))
+    }
 
     fetchStock(stockId)
       .then(({ data }) => {
-        if (active) setStock(data)
+        if (active) updatePageState({ stock: data })
       })
       .catch((requestError: unknown) => {
-        if (active) setError(formatApiError(requestError))
+        if (active) updatePageState({ error: formatApiError(requestError) })
       })
       .finally(() => {
-        if (active) setLoading(false)
+        if (active) updatePageState({ loading: false })
       })
 
     fetchStockAnalysis(stockId)
       .then(({ data }) => {
-        if (active) setAnalysis(data)
+        if (active) updatePageState({ analysis: data })
       })
       .catch((requestError: unknown) => {
-        if (active) setAnalysisError(formatApiError(requestError))
+        if (active) updatePageState({ analysisError: formatApiError(requestError) })
+      })
+      .finally(() => {
+        if (active) updatePageState({ analysisLoading: false })
       })
 
     return () => {
@@ -57,22 +75,51 @@ export function StockDetailsPage() {
     }
   }, [stockId])
 
-  if (loading) {
-    return <p role="status" className="mx-auto max-w-7xl px-4 py-12 text-center text-sm text-slate-500">Loading stock...</p>
-  }
-
-  if (error || !stock) {
+  if (!stockId) {
     return (
       <div className="mx-auto max-w-7xl px-4 py-12">
         <p role="alert" className="mb-5 rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-700">
-          {error || 'Stock not found.'}
+          A stock ID is required.
         </p>
         <Button variant="outline" asChild><Link to="/explore/stocks">Back to stocks</Link></Button>
       </div>
     )
   }
 
-  const isPositive = stock.change >= 0
+  const currentState = stockId && pageState.stockId === stockId ? pageState : undefined
+
+  if (!currentState || currentState.loading) {
+    return <p role="status" className="mx-auto max-w-7xl px-4 py-12 text-center text-sm text-slate-500">Loading stock...</p>
+  }
+
+  if (currentState.error || !currentState.stock) {
+    return (
+      <div className="mx-auto max-w-7xl px-4 py-12">
+        <p role="alert" className="mb-5 rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-700">
+          {currentState.error || 'Stock not found.'}
+        </p>
+        <Button variant="outline" asChild><Link to="/explore/stocks">Back to stocks</Link></Button>
+      </div>
+    )
+  }
+
+  const { stock, analysis, analysisError } = currentState
+  const isPositive = stock.change_percent >= 0
+  const chartData = [...stock.price_history]
+    .sort((a, b) => a.price_timestamp.localeCompare(b.price_timestamp))
+    .map((point) => ({
+      month: new Date(point.price_timestamp).toLocaleDateString(undefined, { month: 'short', day: 'numeric' }),
+      value: point.close,
+    }))
+  const fundamentals = [
+    ['Market cap', stock.fundamentals.market_cap],
+    ['P/E ratio', stock.fundamentals.pe_ratio],
+    ['EPS', stock.fundamentals.eps],
+    ['Dividend yield', stock.fundamentals.dividend_yield, '%'],
+    ['Book value', stock.fundamentals.book_value],
+    ['Debt to equity', stock.fundamentals.debt_to_equity],
+    ['ROE', stock.fundamentals.roe, '%'],
+  ] as const
 
   return (
     <div className="mx-auto max-w-7xl px-4 py-8 md:px-6 lg:px-8">
@@ -86,7 +133,8 @@ export function StockDetailsPage() {
             <h1 className="text-3xl font-semibold tracking-tight text-slate-900 md:text-4xl">{stock.name}</h1>
             <div className="mt-2 flex items-center gap-3 text-sm text-slate-500">
               <span className="font-medium uppercase tracking-[0.08em] text-slate-700">{stock.symbol}</span>
-              <span className="rounded-full border border-slate-200 bg-white px-2 py-1">{stock.sector}</span>
+              <span className="rounded-full border border-slate-200 bg-white px-2 py-1">{stock.sector || 'Sector unavailable'}</span>
+              <span>{stock.exchange}</span>
             </div>
           </div>
 
@@ -95,10 +143,10 @@ export function StockDetailsPage() {
               <div className="text-3xl font-semibold text-slate-900">₹{stock.price.toLocaleString()}</div>
               <div className={`mt-1 inline-flex items-center gap-1 text-sm ${isPositive ? 'text-emerald-600' : 'text-red-600'}`}>
                 <TrendingUp className="h-4 w-4" />
-                {isPositive ? '+' : ''}{stock.change}%
+                {isPositive ? '+' : ''}{stock.change_percent}%
               </div>
             </div>
-            <Badge variant={isPositive ? 'success' : 'destructive'}>{stock.trend} trend</Badge>
+            <Badge variant="outline">{stock.price_data_type} · {stock.price_interval}</Badge>
           </div>
         </div>
       </motion.div>
@@ -110,33 +158,33 @@ export function StockDetailsPage() {
               <div className="text-sm font-medium text-slate-500">Historical performance</div>
               <h2 className="mt-1 text-xl font-semibold text-slate-900">Performance overview</h2>
             </div>
-            <Badge variant="outline">{stock.investmentHorizon}</Badge>
+            <Badge variant="outline">{stock.price_history.length} data points</Badge>
           </div>
-          <PerformanceChart data={stock.chartData} />
+          {chartData.length ? (
+            <PerformanceChart data={chartData} />
+          ) : (
+            <p className="py-12 text-center text-sm text-slate-500">No price history available.</p>
+          )}
         </Card>
 
         <Card className="border-slate-200 bg-white p-5 shadow-sm">
           <div className="mb-4 text-sm font-medium text-slate-500">Overview</div>
-          <div className="space-y-4 text-sm text-slate-600">
-            <div className="flex items-center justify-between rounded-xl bg-slate-50 px-3 py-2">
-              <span>Market cap</span>
-              <span className="font-medium text-slate-900">{stock.marketCap}</span>
-            </div>
-            <div className="flex items-center justify-between rounded-xl bg-slate-50 px-3 py-2">
-              <span>Historical return</span>
-              <span className="font-medium text-emerald-600">+{stock.historicalReturn}%</span>
-            </div>
-            <div className="flex items-center justify-between rounded-xl bg-slate-50 px-3 py-2">
-              <span>Research score</span>
-              <span className="font-medium text-slate-900">{stock.score}/100</span>
-            </div>
+          <div className="space-y-3 text-sm text-slate-600">
+            {fundamentals.map(([label, value, suffix]) => (
+              <div key={label} className="flex items-center justify-between rounded-xl bg-slate-50 px-3 py-2">
+                <span>{label}</span>
+                <span className="font-medium text-slate-900">
+                  {value == null ? 'N/A' : `${value.toLocaleString()}${suffix ?? ''}`}
+                </span>
+              </div>
+            ))}
           </div>
 
           <Card className="mt-6 border-slate-200 bg-white p-5 shadow-sm">
             <h2 className="text-xl font-semibold text-slate-900">API analysis</h2>
             {analysisError ? (
               <p role="alert" className="mt-3 text-sm text-red-700">{analysisError}</p>
-            ) : analysis === undefined ? (
+            ) : currentState.analysisLoading ? (
               <p role="status" className="mt-3 text-sm text-slate-500">Loading analysis...</p>
             ) : (
               <pre className="mt-4 overflow-x-auto whitespace-pre-wrap break-words rounded-lg bg-slate-50 p-4 text-sm text-slate-700">
@@ -145,34 +193,39 @@ export function StockDetailsPage() {
             )}
           </Card>
 
-          <p className="mt-5 text-sm leading-6 text-slate-600">{stock.description}</p>
         </Card>
       </div>
 
       <div className="mt-8 rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
-        <div className="mb-5 flex items-center gap-2 text-sm font-medium uppercase tracking-[0.12em] text-slate-500">
-          <BadgeDollarSign className="h-4 w-4 text-sky-600" />
-          Historical simulation
-        </div>
-
-        <div className="grid gap-4 md:grid-cols-3">
-          <div className="rounded-2xl bg-slate-50 p-4">
-            <div className="text-sm text-slate-500">Initial investment</div>
-            <div className="mt-2 text-2xl font-semibold text-slate-900">₹{stock.initialInvestment.toLocaleString()}</div>
+        <h2 className="mb-5 text-xl font-semibold text-slate-900">Financial history</h2>
+        {stock.financial_history.length ? (
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[640px] text-left text-sm">
+              <thead className="border-b border-slate-200 text-slate-500">
+                <tr>
+                  <th className="px-3 py-3 font-medium">Period ending</th>
+                  <th className="px-3 py-3 font-medium">Revenue</th>
+                  <th className="px-3 py-3 font-medium">Operating profit</th>
+                  <th className="px-3 py-3 font-medium">Net profit</th>
+                  <th className="px-3 py-3 font-medium">EPS</th>
+                </tr>
+              </thead>
+              <tbody>
+                {stock.financial_history.map((period) => (
+                  <tr key={`${period.period_type}-${period.period_end}`} className="border-b border-slate-100 last:border-0">
+                    <td className="px-3 py-3 text-slate-700">{period.period_end}</td>
+                    <td className="px-3 py-3 text-slate-700">{period.revenue?.toLocaleString() ?? 'N/A'}</td>
+                    <td className="px-3 py-3 text-slate-700">{period.operating_profit?.toLocaleString() ?? 'N/A'}</td>
+                    <td className="px-3 py-3 text-slate-700">{period.net_profit?.toLocaleString() ?? 'N/A'}</td>
+                    <td className="px-3 py-3 text-slate-700">{period.eps?.toLocaleString() ?? 'N/A'}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
-          <div className="rounded-2xl bg-emerald-50 p-4">
-            <div className="text-sm text-emerald-700">Historical value</div>
-            <div className="mt-2 text-2xl font-semibold text-emerald-700">₹{stock.historicalValue.toLocaleString()}</div>
-          </div>
-          <div className="rounded-2xl bg-sky-50 p-4">
-            <div className="text-sm text-sky-700">Historical gain</div>
-            <div className="mt-2 text-2xl font-semibold text-sky-700">₹{stock.historicalGain.toLocaleString()}</div>
-          </div>
-        </div>
-
-        <div className="mt-5 rounded-2xl border border-amber-200 bg-amber-50/80 p-4 text-sm leading-6 text-amber-900">
-          Historical simulation based on historical performance. Past performance does not guarantee future results.
-        </div>
+        ) : (
+          <p className="text-sm text-slate-500">No financial history available.</p>
+        )}
       </div>
 
       <div className="mt-8 flex items-center justify-between gap-3">

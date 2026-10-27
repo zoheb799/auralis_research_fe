@@ -1,6 +1,6 @@
 import type { AxiosResponse } from 'axios'
 import { apiClient } from './client'
-import type { Stock } from '../types/stock'
+import type { Stock, StockDetailResponse } from '../types/stock'
 import type { PaginatedResponse } from '../lib/apiResponse'
 
 export interface ListOptions {
@@ -17,7 +17,7 @@ export const fetchStocks = (params?: ListOptions): Promise<AxiosResponse<Stock[]
   return apiClient.get('/stocks/', { params })
 }
 
-export const fetchStock = (assetId: string): Promise<AxiosResponse<Stock>> => {
+export const fetchStock = (assetId: string): Promise<AxiosResponse<StockDetailResponse>> => {
   return apiClient.get(`/stocks/${assetId}`)
 }
 

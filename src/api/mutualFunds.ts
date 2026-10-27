@@ -1,6 +1,6 @@
 import type { AxiosResponse } from 'axios'
 import { apiClient } from './client'
-import type { MutualFund } from '../types/mutualFund'
+import type { MutualFund, MutualFundAnalysis, MutualFundResponse } from '../types/mutualFund'
 import type { PaginatedResponse } from '../lib/apiResponse'
 
 export interface ListOptions {
@@ -19,11 +19,11 @@ export const fetchMutualFunds = (
   return apiClient.get('/mutual-funds/', { params })
 }
 
-export const fetchMutualFund = (assetId: string): Promise<AxiosResponse<MutualFund>> => {
+export const fetchMutualFund = (assetId: string): Promise<AxiosResponse<MutualFundResponse>> => {
   return apiClient.get(`/mutual-funds/${assetId}`)
 }
 
-export const fetchMutualFundAnalysis = (assetId: string): Promise<AxiosResponse<unknown>> => {
+export const fetchMutualFundAnalysis = (assetId: string): Promise<AxiosResponse<MutualFundAnalysis>> => {
   return apiClient.get(`/mutual-funds/${assetId}/analysis`)
 }
 

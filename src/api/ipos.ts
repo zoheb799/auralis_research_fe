@@ -1,6 +1,6 @@
 import type { AxiosResponse } from 'axios'
 import { apiClient } from './client'
-import type { IPO } from '../types/ipo'
+import type { IPO, IPOAnalysis, IPOResponse } from '../types/ipo'
 import type { PaginatedResponse } from '../lib/apiResponse'
 
 export interface ListOptions {
@@ -17,11 +17,11 @@ export const fetchIPOs = (params?: ListOptions): Promise<AxiosResponse<IPO[] | P
   return apiClient.get('/ipos/', { params })
 }
 
-export const fetchIPO = (assetId: string): Promise<AxiosResponse<IPO>> => {
+export const fetchIPO = (assetId: string): Promise<AxiosResponse<IPOResponse>> => {
   return apiClient.get(`/ipos/${assetId}`)
 }
 
-export const fetchIPOAnalysis = (assetId: string): Promise<AxiosResponse<unknown>> => {
+export const fetchIPOAnalysis = (assetId: string): Promise<AxiosResponse<IPOAnalysis>> => {
   return apiClient.get(`/ipos/${assetId}/analysis`)
 }
 
