@@ -8,6 +8,7 @@ import { messagesApi } from '../../api/messages'
 import { formatApiError } from '../../api/client'
 import { useAuth } from '../../context/AuthContext'
 import type { Message } from '../../types/api'
+import { MarkdownMessage } from './MarkdownMessage'
 import { Button } from '../ui/button'
 import { Card } from '../ui/card'
 import { Input } from '../ui/input'
@@ -164,9 +165,8 @@ export function ChatWidget({ conversationId: routeConversationId }: ChatWidgetPr
       const response = await messagesApi.create(createdConversationId, { content: trimmedQuery })
 
       setMessages((current) => {
-        const withoutOptimistic = current.filter((message) => message.id !== optimisticMessage.id)
-        const withoutDuplicateResponse = withoutOptimistic.filter(
-          (message) => !(message.id === response.data.id || (message.role === response.data.role && message.content === response.data.content && message.id !== optimisticMessage.id)),
+        const withoutDuplicateResponse = current.filter(
+          (message) => message.id !== response.data.id,
         )
 
         return [...withoutDuplicateResponse, { id: response.data.id, role: response.data.role, content: response.data.content }]
@@ -232,7 +232,9 @@ export function ChatWidget({ conversationId: routeConversationId }: ChatWidgetPr
                       : 'border border-slate-200 bg-slate-50 text-slate-700'
                   }`}
                 >
-                  {message.content}
+                  {message.role === 'assistant'
+                    ? <MarkdownMessage content={message.content} />
+                    : <p className="whitespace-pre-wrap break-words">{message.content}</p>}
 
                   {message.stocks && (
                     <div className="mt-4 space-y-2">

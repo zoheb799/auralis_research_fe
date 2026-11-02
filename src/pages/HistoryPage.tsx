@@ -6,6 +6,7 @@ import { Link } from 'react-router-dom'
 import { conversationsApi } from '../api/conversations'
 import { formatApiError } from '../api/client'
 import { Card } from '../components/ui/card'
+import { getResearchCategoryFromTitle } from '../lib/assetResearch'
 import type { Conversation } from '../types/api'
 
 const getConversationTitle = (conversation: Conversation) => {
@@ -64,7 +65,14 @@ export function HistoryPage() {
               <Card className="group border-slate-200 bg-white p-5 shadow-sm transition-all hover:-translate-y-0.5 hover:border-sky-200 hover:shadow-[0_18px_30px_rgba(14,116,144,0.08)]">
                 <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
                   <div>
-                    <div className="text-xl font-semibold text-slate-900">{getConversationTitle(conversation)}</div>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <div className="text-xl font-semibold text-slate-900">{getConversationTitle(conversation)}</div>
+                      {getResearchCategoryFromTitle(conversation.title) && (
+                        <span className="rounded-full border border-sky-200 bg-sky-50 px-2 py-0.5 text-xs font-medium text-sky-700">
+                          {getResearchCategoryFromTitle(conversation.title)} research
+                        </span>
+                      )}
+                    </div>
                     <div className="mt-1 flex items-center gap-2 text-sm text-slate-500">
                       <span>
                         {conversation.updated_at

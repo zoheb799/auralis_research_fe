@@ -6,6 +6,7 @@ import { Link, NavLink } from 'react-router-dom'
 import { conversationsApi } from '../../api/conversations'
 import { formatApiError } from '../../api/client'
 import { useAuth } from '../../context/AuthContext'
+import { getResearchCategoryFromTitle } from '../../lib/assetResearch'
 import type { Conversation } from '../../types/api'
 import { Button } from '../ui/button'
 import { Card } from '../ui/card'
@@ -102,8 +103,15 @@ function ConversationHistory({ activeConversationId }: { activeConversationId?: 
               <div className="flex items-start gap-2.5">
                 <MessageSquareText className="mt-0.5 h-4 w-4 shrink-0 text-sky-600" />
                 <span className="min-w-0">
-                  <span className="block truncate text-sm font-medium text-slate-800">
-                    {getConversationTitle(conversation)}
+                  <span className="flex items-center gap-1.5">
+                    <span className="block truncate text-sm font-medium text-slate-800">
+                      {getConversationTitle(conversation)}
+                    </span>
+                    {getResearchCategoryFromTitle(conversation.title) && (
+                      <span className="shrink-0 rounded-full bg-sky-50 px-1.5 py-0.5 text-[10px] font-medium text-sky-700">
+                        {getResearchCategoryFromTitle(conversation.title)}
+                      </span>
+                    )}
                   </span>
                   <span className="mt-1 block text-xs text-slate-500">{getConversationDate(conversation)}</span>
                 </span>

@@ -112,9 +112,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     async (payload: LoginRequest) => {
       const response = await authApi.login(payload)
       persistAuthSession(response.data)
-      navigate('/', { replace: true })
+      const returnLocation = location.state as {
+        from?: { pathname?: string; search?: string; hash?: string }
+      } | null
+      const destination = returnLocation?.from?.pathname
+        ? `${returnLocation.from.pathname}${returnLocation.from.search ?? ''}${returnLocation.from.hash ?? ''}`
+        : '/'
+      navigate(destination, { replace: true })
     },
-    [navigate, persistAuthSession],
+    [location.state, navigate, persistAuthSession],
   )
 
   const register = useCallback(

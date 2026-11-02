@@ -8,6 +8,7 @@ import { formatApiError } from '../api/client'
 import { Badge } from '../components/ui/badge'
 import { Button } from '../components/ui/button'
 import { Card } from '../components/ui/card'
+import { AssetResearchDrawer } from '../components/research/AssetResearchDrawer'
 import type { IPOAnalysis, IPOResponse } from '../types/ipo'
 import type { MutualFundAnalysis, MutualFundResponse } from '../types/mutualFund'
 
@@ -379,6 +380,41 @@ export function AssetDetailsPage({ assetType }: AssetDetailsPageProps) {
         <span className="hidden items-center gap-1.5 text-xs text-slate-500 sm:inline-flex">
           <CalendarDays className="h-3.5 w-3.5" />Data supplied by market sources
         </span>
+        {asset && 'ipo_status' in asset ? (
+          <AssetResearchDrawer
+            key={`${assetType}:${asset.id}`}
+            asset={{
+              id: asset.id,
+              name: asset.name,
+              symbol: asset.symbol,
+              category: 'IPO',
+              context: [
+                { label: 'Status', value: asset.ipo_status },
+                ...(asset.issue_price_low != null && asset.issue_price_high != null
+                  ? [{ label: 'Issue price', value: `₹${asset.issue_price_low.toLocaleString()}–₹${asset.issue_price_high.toLocaleString()}` }]
+                  : []),
+                ...(asset.issue_size != null ? [{ label: 'Issue size', value: `₹${asset.issue_size.toLocaleString()} Cr` }] : []),
+                ...(asset.sector ? [{ label: 'Sector', value: asset.sector }] : []),
+              ],
+            }}
+          />
+        ) : asset ? (
+          <AssetResearchDrawer
+            key={`${assetType}:${asset.id}`}
+            asset={{
+              id: asset.id,
+              name: asset.name,
+              symbol: asset.symbol,
+              category: 'Mutual Fund',
+              context: [
+                ...(asset.category ? [{ label: 'Category', value: asset.category }] : []),
+                ...(asset.nav != null ? [{ label: 'NAV', value: `₹${asset.nav.toLocaleString(undefined, { maximumFractionDigits: 3 })}` }] : []),
+                ...(asset.fund_house ? [{ label: 'Fund house', value: asset.fund_house }] : []),
+                ...(asset.expense_ratio != null ? [{ label: 'Expense ratio', value: `${asset.expense_ratio}%` }] : []),
+              ],
+            }}
+          />
+        ) : null}
       </div>
       {asset && 'ipo_status' in asset ? (
         <IPOContent

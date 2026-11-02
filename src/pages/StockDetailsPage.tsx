@@ -3,22 +3,20 @@ import { motion } from 'framer-motion'
 import { ArrowUpRight, BarChart3, TrendingUp } from 'lucide-react'
 import { Link, useParams } from 'react-router-dom'
 
-import { fetchStock, fetchStockAnalysis } from '../api/stocks'
+import { fetchStock } from '../api/stocks'
 import { formatApiError } from '../api/client'
 import { PerformanceChart } from '../components/charts/PerformanceChart'
 import { Badge } from '../components/ui/badge'
 import { Button } from '../components/ui/button'
 import { Card } from '../components/ui/card'
+import { AssetResearchDrawer } from '../components/research/AssetResearchDrawer'
 import type { StockDetailResponse } from '../types/stock'
 
 interface StockPageState {
   stockId: string
   stock?: StockDetailResponse
-  analysis?: unknown
   loading: boolean
-  analysisLoading: boolean
   error: string
-  analysisError: string
 }
 
 export function StockDetailsPage() {
@@ -26,9 +24,7 @@ export function StockDetailsPage() {
   const [pageState, setPageState] = useState<StockPageState>({
     stockId: '',
     loading: true,
-    analysisLoading: true,
     error: '',
-    analysisError: '',
   })
 
   useEffect(() => {
@@ -40,9 +36,7 @@ export function StockDetailsPage() {
         ...(previous.stockId === stockId ? previous : {
           stockId,
           loading: true,
-          analysisLoading: true,
           error: '',
-          analysisError: '',
         }),
         ...patch,
       }))
@@ -57,17 +51,6 @@ export function StockDetailsPage() {
       })
       .finally(() => {
         if (active) updatePageState({ loading: false })
-      })
-
-    fetchStockAnalysis(stockId)
-      .then(({ data }) => {
-        if (active) updatePageState({ analysis: data })
-      })
-      .catch((requestError: unknown) => {
-        if (active) updatePageState({ analysisError: formatApiError(requestError) })
-      })
-      .finally(() => {
-        if (active) updatePageState({ analysisLoading: false })
       })
 
     return () => {
@@ -103,7 +86,7 @@ export function StockDetailsPage() {
     )
   }
 
-  const { stock, analysis, analysisError } = currentState
+  const { stock } = currentState
   const isPositive = stock.change_percent >= 0
   const chartData = [...stock.price_history]
     .sort((a, b) => a.price_timestamp.localeCompare(b.price_timestamp))
@@ -139,6 +122,21 @@ export function StockDetailsPage() {
           </div>
 
           <div className="flex flex-col items-start gap-3 md:flex-row md:items-center">
+            <AssetResearchDrawer
+              key={stock.id}
+              asset={{
+                id: stock.id,
+                name: stock.name,
+                symbol: stock.symbol,
+                category: 'Stock',
+                context: [
+                  { label: 'Price', value: `₹${stock.price.toLocaleString()}` },
+                  { label: 'Change', value: `${isPositive ? '+' : ''}${stock.change_percent}%` },
+                  ...(stock.sector ? [{ label: 'Sector', value: stock.sector }] : []),
+                  { label: 'Exchange', value: stock.exchange },
+                ]
+              }}
+            />
             <div>
               <div className="text-3xl font-semibold text-slate-900">₹{stock.price.toLocaleString()}</div>
               <div className={`mt-1 inline-flex items-center gap-1 text-sm ${isPositive ? 'text-emerald-600' : 'text-red-600'}`}>
@@ -180,19 +178,6 @@ export function StockDetailsPage() {
             ))}
           </div>
 
-          <Card className="mt-6 border-slate-200 bg-white p-5 shadow-sm">
-            <h2 className="text-xl font-semibold text-slate-900">API analysis</h2>
-            {analysisError ? (
-              <p role="alert" className="mt-3 text-sm text-red-700">{analysisError}</p>
-            ) : currentState.analysisLoading ? (
-              <p role="status" className="mt-3 text-sm text-slate-500">Loading analysis...</p>
-            ) : (
-              <pre className="mt-4 overflow-x-auto whitespace-pre-wrap break-words rounded-lg bg-slate-50 p-4 text-sm text-slate-700">
-                {JSON.stringify(analysis, null, 2)}
-              </pre>
-            )}
-          </Card>
-
         </Card>
       </div>
 
@@ -232,9 +217,11 @@ export function StockDetailsPage() {
         <Button variant="outline" asChild>
           <Link to="/explore/stocks">Back to explore</Link>
         </Button>
-        <Button className="gap-2">
-          View research brief
-          <ArrowUpRight className="h-4 w-4" />
+        <Button variant="outline" className="gap-2" asChild>
+          <Link to="/history">
+            View research history
+            <ArrowUpRight className="h-4 w-4" />
+          </Link>
         </Button>
       </div>
     </div>
